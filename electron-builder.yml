@@ -16,6 +16,17 @@ files:
   - node_modules/**
   - package.json
   - next.config.ts
+# electron-builder's `files` glob silently drops any directory literally
+# named `node_modules`, even nested ones matched by a broader pattern like
+# `.next/**` — it has its own separate node_modules handling pipeline that
+# doesn't know about this one. Turbopack's server build generates
+# `.next/node_modules/<package>-<hash>` symlinks that resolve native/external
+# modules (better-sqlite3, @prisma/client, the agent SDK) at runtime — without
+# them the packaged app throws "Cannot find module '<hash>'" the first time
+# any API route touches Prisma. Copy that folder in explicitly.
+extraResources:
+  - from: .next/node_modules
+    to: app/.next/node_modules
 # `prisma migrate deploy` needs to run as a real Node script that can shell
 # out to a standalone schema-engine binary and require its own transitive
 # deps freely. Packages we'd need to asarUnpack for that (@prisma/*, prisma)

@@ -1,6 +1,6 @@
 {
   "name": "claude-manager",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Gerenciador local de sessões do Claude Code",
   "author": {
@@ -11,15 +11,19 @@
   "main": "electron/main.js",
   "scripts": {
     "dev": "next dev",
-    "build": "NODE_OPTIONS= next build",
+    "build": "cross-env NODE_OPTIONS= next build",
     "start": "next start",
     "lint": "eslint",
-    "electron": "ELECTRON_START_URL=http://localhost:3000 electron .",
+    "electron": "cross-env ELECTRON_START_URL=http://localhost:3000 electron .",
     "electron:dev": "concurrently -k -n NEXT,ELECTRON \"npm:dev\" \"npm:electron\"",
     "predist": "npm run build",
-    "dist": "NODE_OPTIONS= electron-builder",
-    "dist:linux": "npm run predist && NODE_OPTIONS= electron-builder --linux AppImage deb",
-    "release:linux": "npm run predist && NODE_OPTIONS= electron-builder --publish always --linux AppImage deb"
+    "dist": "cross-env NODE_OPTIONS= electron-builder",
+    "dist:linux": "npm run predist && cross-env NODE_OPTIONS= electron-builder --linux AppImage deb",
+    "dist:win": "npm run predist && cross-env NODE_OPTIONS= electron-builder --win nsis",
+    "dist:mac": "npm run predist && cross-env NODE_OPTIONS= electron-builder --mac dmg",
+    "release:linux": "npm run predist && cross-env NODE_OPTIONS= electron-builder --publish always --linux AppImage deb",
+    "release:win": "npm run predist && cross-env NODE_OPTIONS= electron-builder --publish always --win nsis",
+    "release:mac": "npm run predist && cross-env NODE_OPTIONS= electron-builder --publish always --mac dmg"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.234",
@@ -40,6 +44,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "concurrently": "^10.0.5",
+    "cross-env": "^10.1.0",
     "electron": "^43.4.0",
     "electron-builder": "^26.15.3",
     "eslint": "^9",

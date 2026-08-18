@@ -17,6 +17,8 @@ const eslintConfig = defineConfig([
     "electron/**",
     // electron-builder output (copies of node_modules, .next, etc).
     "release/**",
+    // Separate Next.js app with its own eslint config — not part of this one.
+    "lp/**",
   ]),
 ]);
 
