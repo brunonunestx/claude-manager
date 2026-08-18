@@ -10,6 +10,9 @@
   "homepage": "local",
   "main": "electron/main.js",
   "scripts": {
+    "postinstall": "prisma generate",
+    "predev": "prisma generate",
+    "prebuild": "prisma generate",
     "dev": "next dev",
     "build": "cross-env NODE_OPTIONS= next build",
     "start": "next start",
