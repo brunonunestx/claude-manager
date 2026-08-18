@@ -1,0 +1,39 @@
+appId: com.claudemanager.app
+# No space: fpm (used for the .deb target) breaks on tar-ing a path with a
+# space in it (/opt/${sanitizedProductName}/...). The in-app window title is
+# still "Claude Manager" — this only affects the install dir / menu entry name.
+productName: ClaudeManager
+directories:
+  output: release
+files:
+  - .next/**
+  - public/**
+  - app/generated/**
+  - electron/**
+  - prisma/schema.prisma
+  - prisma/migrations/**
+  - prisma.config.ts
+  - node_modules/**
+  - package.json
+  - next.config.ts
+# `prisma migrate deploy` needs to run as a real Node script that can shell
+# out to a standalone schema-engine binary and require its own transitive
+# deps freely. Packages we'd need to asarUnpack for that (@prisma/*, prisma)
+# lose the ability to resolve siblings still left inside app.asar (e.g.
+# @prisma/config requiring `effect`) — asar's virtual-path trick only works
+# for requires made by code still running from inside the archive. Simplest
+# fix that avoids the whole class of bug: don't asar this app at all.
+asar: false
+npmRebuild: true
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Development
+mac:
+  target:
+    - dmg
+  category: public.app-category.developer-tools
+win:
+  target:
+    - nsis

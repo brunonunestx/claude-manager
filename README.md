@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Claude Manager
 
-## Getting Started
+Gerenciador local de sessões do Claude Code: crie tarefas com contexto e arquivos, dispare
+sessões em paralelo (cada uma roda o binário do Claude Code como subprocesso via
+`@anthropic-ai/claude-agent-sdk`) e acompanhe o status/transcript de cada uma em tempo real.
 
-First, run the development server:
+## Stack
+
+- Next.js (App Router) + TypeScript — UI e API routes num único app
+- Prisma + SQLite (`dev.db` na raiz do projeto) — persistência de agentes/tarefas/sessões
+- `@anthropic-ai/claude-agent-sdk` — dispara cada sessão como um processo `claude` isolado
+- SSE (`/api/sessions/[id]/stream`) — transcript e status ao vivo na tela da sessão
+
+## Modelo
+
+- **Agent** — preset reutilizável: nome, system prompt, diretório do projeto (`cwd`) e arquivos
+  de contexto sempre carregados (ex: um agente "Scoder" apontando pro CLAUDE.md do projeto Scoder).
+- **Task** — o pedido: agente escolhido, prompt, contexto extra livre e arquivos anexados.
+- **Session** — uma execução de uma task. Guarda status (`queued`/`running`/`done`/`error`/`canceled`)
+  e o transcript completo dos eventos do SDK.
+
+## Rodando localmente
+
+Requer autenticação do Claude Code já configurada na máquina (`claude` já logado, ou
+`ANTHROPIC_API_KEY` no ambiente) — é o mesmo processo `claude` que a SDK sobe por baixo.
 
 ```bash
+npm install
+npx prisma migrate dev   # primeira vez, cria/atualiza o dev.db
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> Nota: se o shell tiver `NODE_OPTIONS=--use-system-ca` definido, o build (`next build`) falha
+> com `ERR_WORKER_INVALID_EXEC_ARGV` — é uma incompatibilidade do Next com essa flag em
+> `NODE_OPTIONS`, não um problema do projeto. Rode com `NODE_OPTIONS= npm run build` se precisar.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Observações de arquitetura
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Sessões rodam em memória no processo do servidor Next (`lib/claude/runner.ts` guarda os
+  `AbortController`s ativos) — cancelar reinicia o servidor perde o controle das sessões em
+  andamento, mas o histórico já persistido no SQLite continua íntegro.
+- `permissionMode: "bypassPermissions"` está fixo no runner — não há UI de aprovação de tool
+  use ainda, então cada sessão roda sem parar pra pedir permissão. Ajuste em
+  `lib/claude/runner.ts` se quiser um modo mais conservador.
+- Uploads de anexos ficam em `./uploads` (fora do controle de versão) e o `cwd`/diretórios de
+  contexto do agente são liberados via `additionalDirectories` pro Claude conseguir ler.

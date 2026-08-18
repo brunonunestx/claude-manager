@@ -1,0 +1,53 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Agent {
+  id           String   @id @default(cuid())
+  name         String
+  systemPrompt String
+  cwd          String
+  contextFiles String // JSON array of absolute file paths always loaded as context
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tasks Task[]
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  agentId     String
+  agent       Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  prompt      String
+  extraContext String? // free-form additional context for this task
+  attachments String  @default("[]") // JSON array of absolute file paths attached to this task
+  status      String   @default("pending") // pending | running | done | error
+  createdAt   DateTime @default(now())
+
+  sessions Session[]
+}
+
+model Session {
+  id           String    @id @default(cuid())
+  taskId       String
+  task         Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userMessage  String    @default("") // what was actually sent to Claude this turn (assembled task prompt on turn 1, raw reply text afterwards)
+  sdkSessionId String? // Claude Code's own session id for this turn, used to resume the conversation on the next reply
+  status       String    @default("queued") // queued | running | waiting_permission | done | error | canceled
+  transcript   String    @default("[]") // JSON array of SDK message events
+  resultText   String?
+  errorText    String?
+  startedAt    DateTime?
+  endedAt      DateTime?
+  createdAt    DateTime  @default(now())
+}

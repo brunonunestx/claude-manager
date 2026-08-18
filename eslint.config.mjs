@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Plain CommonJS Node script outside the Next app — Electron's main
+    // process — require() is correct here.
+    "electron/**",
+    // electron-builder output (copies of node_modules, .next, etc).
+    "release/**",
   ]),
 ]);
 
