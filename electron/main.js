@@ -2,6 +2,7 @@ const { app, BrowserWindow, dialog } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const path = require("node:path");
 const fs = require("node:fs");
+const os = require("node:os");
 const http = require("node:http");
 const { execFileSync } = require("node:child_process");
 
@@ -123,6 +124,50 @@ function setupAutoUpdate() {
   });
 }
 
+const DESKTOP_ENTRY_ID = "claudemanager";
+
+// AppImages don't register themselves in the Linux applications menu the way
+// a .deb or an NSIS installer does — nothing else does this for us. Rewriting
+// the entry on every launch (rather than once) keeps it self-healing if the
+// user moves the AppImage file, since Exec always points at the current
+// $APPIMAGE path.
+function integrateAppImageDesktopEntry(appRoot) {
+  if (!app.isPackaged || process.platform !== "linux" || !process.env.APPIMAGE) return;
+
+  const appImagePath = process.env.APPIMAGE;
+  const dataHome = process.env.XDG_DATA_HOME || path.join(os.homedir(), ".local", "share");
+  const iconDir = path.join(dataHome, "icons", "hicolor", "512x512", "apps");
+  const appsDir = path.join(dataHome, "applications");
+
+  fs.mkdirSync(iconDir, { recursive: true });
+  fs.mkdirSync(appsDir, { recursive: true });
+  fs.copyFileSync(path.join(appRoot, "public", "icon-512.png"), path.join(iconDir, `${DESKTOP_ENTRY_ID}.png`));
+
+  const desktopEntry = `[Desktop Entry]
+Type=Application
+Name=Claude Manager
+Comment=Gerenciador local de sessões do Claude Code
+Exec="${appImagePath}" %U
+Icon=${DESKTOP_ENTRY_ID}
+Terminal=false
+Categories=Development;
+StartupWMClass=ClaudeManager
+`;
+  fs.writeFileSync(path.join(appsDir, `${DESKTOP_ENTRY_ID}.desktop`), desktopEntry, { mode: 0o644 });
+
+  // Best-effort refresh so the menu/icon show up without a re-login; both
+  // tools are commonly missing (e.g. minimal window managers), so a failure
+  // here is not fatal — the .desktop file is already in place either way.
+  try {
+    execFileSync("update-desktop-database", [appsDir], { stdio: "ignore" });
+  } catch {}
+  try {
+    execFileSync("gtk-update-icon-cache", ["-f", "-t", path.join(dataHome, "icons", "hicolor")], {
+      stdio: "ignore",
+    });
+  } catch {}
+}
+
 app.whenReady().then(async () => {
   try {
     const devUrl = process.env.ELECTRON_START_URL;
@@ -134,6 +179,11 @@ app.whenReady().then(async () => {
     const port = await startNextServer();
     createWindow(`http://127.0.0.1:${port}`);
     setupAutoUpdate();
+    try {
+      integrateAppImageDesktopEntry(getAppRoot());
+    } catch (err) {
+      console.error("Desktop menu integration failed:", err);
+    }
   } catch (err) {
     console.error("Failed to start Claude Manager:", err);
     dialog.showErrorBox(
