@@ -70,10 +70,11 @@ jobs:
         include:
           - os: ubuntu-latest
             script: release:linux
-          - os: windows-latest
-            script: release:win
-          - os: macos-latest
-            script: release:mac
+          # Windows and macOS builds are disabled for now — shipping Linux only.
+          # - os: windows-latest
+          #   script: release:win
+          # - os: macos-latest
+          #   script: release:mac
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

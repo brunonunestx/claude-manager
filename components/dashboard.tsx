@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent, type MouseEvent } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Inbox, Bot, FileText, Clock3, Plus } from "lucide-react";
+import { Inbox, Bot, Clock3, Plus, Send, Loader2, AlertCircle } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 
 type TaskRow = {
@@ -11,6 +12,13 @@ type TaskRow = {
   createdAt: string;
   agent: { name: string };
   sessions: { status: string }[];
+};
+
+const ACTIVE_STATUSES = new Set(["queued", "running"]);
+
+const BORDER_BY_STATUS: Record<string, string> = {
+  running: "border-blue-600/60",
+  done: "border-green-600/60",
 };
 
 export function Dashboard() {
@@ -56,50 +64,100 @@ export function Dashboard() {
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-neutral-800">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-neutral-900 text-neutral-400">
-          <tr>
-            <th className="px-4 py-2 font-medium">
-              <span className="flex items-center gap-1.5">
-                <Bot className="size-3.5" />
-                Agente
-              </span>
-            </th>
-            <th className="px-4 py-2 font-medium">
-              <span className="flex items-center gap-1.5">
-                <FileText className="size-3.5" />
-                Tarefa
-              </span>
-            </th>
-            <th className="px-4 py-2 font-medium">Status</th>
-            <th className="px-4 py-2 font-medium">
-              <span className="flex items-center gap-1.5">
-                <Clock3 className="size-3.5" />
-                Criada em
-              </span>
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-neutral-800">
-          {tasks.map((task) => (
-            <tr key={task.id} className="hover:bg-neutral-900/60">
-              <td className="px-4 py-3">{task.agent.name}</td>
-              <td className="max-w-md truncate px-4 py-3 text-neutral-300">
-                <Link href={`/tasks/${task.id}`} className="hover:underline">
-                  {task.prompt}
-                </Link>
-              </td>
-              <td className="px-4 py-3">
-                <StatusBadge status={task.sessions[0]?.status ?? "pending"} />
-              </td>
-              <td className="px-4 py-3 text-neutral-400">
-                {new Date(task.createdAt).toLocaleString("pt-BR")}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {tasks.map((task) => (
+        <TaskCard key={task.id} task={task} />
+      ))}
+    </div>
+  );
+}
+
+function TaskCard({ task }: { task: TaskRow }) {
+  const router = useRouter();
+  const status = task.sessions[0]?.status ?? "pending";
+  const isActive = ACTIVE_STATUSES.has(status);
+
+  const [replyText, setReplyText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function openConversation() {
+    router.push(`/tasks/${task.id}`);
+  }
+
+  async function onReply(e: FormEvent) {
+    e.preventDefault();
+    if (!replyText.trim()) return;
+
+    setSending(true);
+    setError(null);
+
+    const res = await fetch(`/api/tasks/${task.id}/reply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: replyText }),
+    });
+
+    setSending(false);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      setError(data?.error ?? "Não foi possível enviar a instrução.");
+      return;
+    }
+
+    setReplyText("");
+    router.push(`/tasks/${task.id}`);
+  }
+
+  return (
+    <div
+      onClick={openConversation}
+      className={`flex cursor-pointer flex-col gap-3 rounded-2xl border bg-neutral-950 p-4 transition-colors hover:border-neutral-600 ${
+        BORDER_BY_STATUS[status] ?? "border-neutral-800"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 text-sm text-neutral-300">
+          <Bot className="size-3.5" />
+          {task.agent.name}
+        </span>
+        <StatusBadge status={status} />
+      </div>
+
+      <p className="line-clamp-3 text-sm text-neutral-200">{task.prompt}</p>
+
+      <span className="flex items-center gap-1.5 text-xs text-neutral-500">
+        <Clock3 className="size-3" />
+        {new Date(task.createdAt).toLocaleString("pt-BR")}
+      </span>
+
+      <form onSubmit={onReply} onClick={(e: MouseEvent) => e.stopPropagation()} className="mt-1 space-y-1.5">
+        <textarea
+          value={replyText}
+          onChange={(e) => setReplyText(e.target.value)}
+          disabled={isActive}
+          rows={2}
+          placeholder={isActive ? "Sessão em execução…" : "Enviar instrução para esta sessão…"}
+          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-sm disabled:opacity-50"
+        />
+
+        {error && (
+          <p className="flex items-center gap-1.5 text-xs text-red-400">
+            <AlertCircle className="size-3.5" />
+            {error}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={isActive || sending || !replyText.trim()}
+          className="flex items-center gap-1.5 rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-500 disabled:opacity-50"
+        >
+          {sending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+          {sending ? "Enviando…" : "Enviar"}
+        </button>
+      </form>
     </div>
   );
 }
