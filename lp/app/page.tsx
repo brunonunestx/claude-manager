@@ -109,9 +109,9 @@ export default async function Home() {
           </div>
           <div className="space-y-3 p-6">
             {[
-              { agent: "Scoder", status: "running", color: "bg-blue-600/20 text-blue-400" },
-              { agent: "Trezio", status: "done", color: "bg-green-600/20 text-green-400" },
-              { agent: "iPass", status: "queued", color: "bg-neutral-700 text-neutral-300" },
+              { agent: "Projeto A", status: "running", color: "bg-blue-600/20 text-blue-400" },
+              { agent: "Projeto B", status: "done", color: "bg-green-600/20 text-green-400" },
+              { agent: "Projeto C", status: "queued", color: "bg-neutral-700 text-neutral-300" },
             ].map((row) => (
               <div
                 key={row.agent}
