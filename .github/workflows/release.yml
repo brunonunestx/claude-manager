@@ -48,6 +48,20 @@ jobs:
       - name: Push commit and tag
         run: git push --follow-tags
 
+      # The build matrix runs the 3 OS jobs in parallel, each calling
+      # `electron-builder --publish always`. electron-builder looks up an
+      # existing release for the tag and reuses it, but if none exists yet it
+      # creates one — with 3 jobs racing that lookup at once, each job sees
+      # "not found" and creates its own draft, splitting the assets across
+      # duplicate releases. Pre-creating the draft here (before the matrix
+      # starts) means every job finds the same release and just attaches to it.
+      - name: Pre-create draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ steps.bump.outputs.tag }}"
+          gh release create "$tag" --draft --title "${tag#v}" --notes "" --repo "${{ github.repository }}"
+
   build:
     needs: bump-version
     strategy:
