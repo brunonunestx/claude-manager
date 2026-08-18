@@ -25,6 +25,10 @@ files:
 # fix that avoids the whole class of bug: don't asar this app at all.
 asar: false
 npmRebuild: true
+publish:
+  provider: github
+  owner: brunonunestx
+  repo: claude-manager
 linux:
   target:
     - AppImage

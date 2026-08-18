@@ -11,20 +11,22 @@
   "main": "electron/main.js",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "NODE_OPTIONS= next build",
     "start": "next start",
     "lint": "eslint",
     "electron": "ELECTRON_START_URL=http://localhost:3000 electron .",
     "electron:dev": "concurrently -k -n NEXT,ELECTRON \"npm:dev\" \"npm:electron\"",
     "predist": "npm run build",
-    "dist": "electron-builder",
-    "dist:linux": "npm run predist && electron-builder --linux AppImage deb"
+    "dist": "NODE_OPTIONS= electron-builder",
+    "dist:linux": "npm run predist && NODE_OPTIONS= electron-builder --linux AppImage deb",
+    "release:linux": "npm run predist && NODE_OPTIONS= electron-builder --publish always --linux AppImage deb"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.234",
     "@prisma/adapter-better-sqlite3": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "better-sqlite3": "^13.0.3",
+    "electron-updater": "^6.8.9",
     "lucide-react": "^1.32.0",
     "next": "16.3.1",
     "prisma": "^7.9.1",

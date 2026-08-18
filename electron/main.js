@@ -1,4 +1,5 @@
 const { app, BrowserWindow, dialog } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const path = require("node:path");
 const fs = require("node:fs");
 const http = require("node:http");
@@ -91,6 +92,37 @@ function createWindow(url) {
   }
 }
 
+// electron-updater can only self-update an AppImage on Linux (via its
+// AppImageUpdater backend, active when the AppImage sets $APPIMAGE at
+// runtime) or a signed installer on Windows/macOS. A .deb install has no
+// in-app update path here — checking would just fail, so skip it.
+function setupAutoUpdate() {
+  if (!app.isPackaged) return;
+  if (process.platform === "linux" && !process.env.APPIMAGE) {
+    console.log("Auto-update skipped: not running from an AppImage.");
+    return;
+  }
+
+  autoUpdater.on("update-downloaded", async (info) => {
+    const { response } = await dialog.showMessageBox({
+      type: "info",
+      buttons: ["Reiniciar agora", "Depois"],
+      defaultId: 0,
+      title: "Atualização disponível",
+      message: `Claude Manager ${info.version} foi baixado. Reiniciar agora para aplicar?`,
+    });
+    if (response === 0) autoUpdater.quitAndInstall();
+  });
+
+  autoUpdater.on("error", (err) => {
+    console.error("Auto-update failed:", err);
+  });
+
+  autoUpdater.checkForUpdates().catch((err) => {
+    console.error("Auto-update check failed:", err);
+  });
+}
+
 app.whenReady().then(async () => {
   try {
     const devUrl = process.env.ELECTRON_START_URL;
@@ -101,6 +133,7 @@ app.whenReady().then(async () => {
 
     const port = await startNextServer();
     createWindow(`http://127.0.0.1:${port}`);
+    setupAutoUpdate();
   } catch (err) {
     console.error("Failed to start Claude Manager:", err);
     dialog.showErrorBox(
